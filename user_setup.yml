@@ -1,0 +1,20 @@
+- hosts: all
+  sudo: yes
+  remote_user: root
+  tasks:
+      - name: Install sudo package
+        action: apt pkg=sudo state=latest
+
+      - name: Add sudo group
+        action: group name=sudo state=present
+
+      - name: Create user for johannes
+        action: user name=johannes state=present groups=sudo shell=/bin/bash
+
+      - name: Switch to torservers.net's recommended ssh config
+        action: copy src=config/sshd_config dest=/etc/sshd_config backup=yes
+        notify: restart ssh
+
+  handlers:
+      - name: restart ssh
+        action: service name=ssh state=restarted
