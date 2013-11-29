@@ -1,5 +1,5 @@
 - hosts: all
-  sudo: yes
+  port: 2202
   remote_user: root
   tasks:
       - name: Install sudo package
@@ -8,11 +8,29 @@
       - name: Add sudo group
         action: group name=sudo state=present
 
+
+      #
+      # Exemplary user for Johannes, copy&paste for more
+      #
       - name: Create user for johannes
         action: user name=johannes state=present groups=sudo shell=/bin/bash
 
+      - name: Change password for johannes
+        action: shell usermod -p `openssl passwd {{ lookup('password', 'account/'+host+'/johannes length=23') }}` johannes executable='/bin/bash'
+
+      - name: Create .ssh folder for johannes
+        action: file path=/home/johannes/.ssh/ state=directory owner=johannes
+
+      - name: Copy SSH key for johannes
+        action: authorized_key key="{{ lookup('file', 'keys/johannes.pub') }}"
+            user=johannes 
+      
+      #
+      # End of per-user config
+      #
+
       - name: Switch to torservers.net's recommended ssh config
-        action: copy src=config/sshd_config dest=/etc/sshd_config backup=yes
+        action: copy src=config/sshd_config dest=/etc/ssh/sshd_config backup=yes
         notify: restart ssh
 
   handlers:
