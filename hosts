@@ -1,1 +1,1 @@
-testhost ansible_ssh_host=127.0.0.1 ansible_ssh_port=2202  ansible_ssh_user=root
+testhost ansible_ssh_host=127.0.0.1 host=vagranttesthost
