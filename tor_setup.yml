@@ -1,0 +1,18 @@
+- hosts: all
+  port: 22023
+  remote_user: johannes
+  sudo: yes
+  tasks:
+      - name: Copy the iptables config to host
+        action: copy src=config/iptables_rules dest=/etc/iptables.rules
+            mode=600
+
+      - name: Copy interface setup script
+        action: copy src=config/iptables_script dest=/etc/network/if-pre-up.d/iptables
+           mode=700
+
+      - name: Restart networking daemon
+        action: service name=networking state=restarted
+
+      - name: Test if still responds
+        action: ping
