@@ -1,5 +1,5 @@
 - hosts: all
-  port: 2202
+  port: 2222
   remote_user: root
   tasks:
       - name: Install sudo package
