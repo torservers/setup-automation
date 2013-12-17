@@ -1,5 +1,5 @@
 - hosts: all
-  port: 2222
+  port: 22
   remote_user: root
   tasks:
       - name: Install sudo package
@@ -32,6 +32,65 @@
       - name: Switch to torservers.net's recommended ssh config
         action: copy src=config/sshd_config dest=/etc/ssh/sshd_config backup=yes
         notify: restart ssh
+
+
+      - name: Copy the iptables config to host
+        action: copy src=config/iptables_rules dest=/etc/iptables.rules
+            mode=600
+
+      - name: Copy interface setup script
+        action: copy src=config/iptables_script dest=/etc/network/if-pre-up.d/iptables
+           mode=700
+
+      - name: Activate iptables config
+        shell: iptables-restore < /etc/iptables.rules
+
+      - name: Test if still responds
+        action: ping
+
+      - name: Set hostname
+        hostname: name={{ host }}
+
+      - name: Add hostname to /etc/hosts
+        shell: echo "127.0.0.1      {{ host }}" >> /etc/hosts
+
+      - name: Disable recommended packages in APT
+        copy: src=config/apt_no_recommends dest=/etc/apt/apt.conf.d/06norecommends
+
+      - name: Full package upgrade
+        apt: update_cache=yes upgrade=full
+
+      - name: Install some required packages
+        apt: update_cache=yes install_recommends=no pkg={{item}} state=present
+        with_items:
+            - less
+            - htop
+            - nload
+            - screen
+            - denyhosts
+            - ntp
+            - apticron
+            - vnstat
+            - logcheck
+            - logcheck-database
+      
+      - name: Remove portmap package
+        apt: pkg=portmap purge=yes state=absent 
+
+      - name: Make apticron send diffs only
+        shell: sed -i -e 's/^# DIFF_ONLY/DIFF_ONLY/' /etc/apticron/apticron.conf
+
+      - name: Setup vnstat
+        shell: vnstat -u -i eth0
+
+      - name: Remove search line from resolv.conf
+        shell: sed -e 's/^search.*$//' /etc/resolv.conf
+
+      - name: Set torserver aliases
+        copy: src=config/aliases dest=/etc/aliases
+
+      - name: Apply Aliases
+        shell: newaliases
 
   handlers:
       - name: restart ssh

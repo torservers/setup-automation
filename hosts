@@ -1,1 +1,1 @@
-testhost ansible_ssh_host=127.0.0.1 host=vagranttesthost
+testhost ansible_ssh_host=10.11.99.21 host=peter nickname=peter ip_address=10.11.99.21

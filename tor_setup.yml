@@ -3,16 +3,39 @@
   remote_user: johannes
   sudo: yes
   tasks:
-      - name: Copy the iptables config to host
-        action: copy src=config/iptables_rules dest=/etc/iptables.rules
-            mode=600
+      - name: Add pycurl package
+        apt: pkg=python-pycurl state=present
+ 
+      - name: Add Tor repository
+        apt_repository: repo="deb http://deb.torproject.org/torproject.org wheezy main" state=present
 
-      - name: Copy interface setup script
-        action: copy src=config/iptables_script dest=/etc/network/if-pre-up.d/iptables
-           mode=700
+      - name: Add Tor Keyservers
+        shell: apt-key adv --recv-keys --keyserver keys.gnupg.net 886DDD89
 
-      - name: Restart networking daemon
-        action: service name=networking state=restarted
+      - name: Install Torproject Keyring
+        apt: update_cache=yes install_recommends=no pkg=deb.torproject.org-keyring state=present
 
-      - name: Test if still responds
-        action: ping
+      - name: Install Tor geoip database
+        apt: update_cache=yes install_recommends=no pkg={{item}}
+        with_items:
+            - mercurial
+            - tor
+            - tor-geoipdb
+
+      - name: Set username in hg config
+        shell: echo "[ui]\nusername = Torservers Admin <admin@lists.torservers.net>" > ~/.hgrc
+
+      - name: Initialize git in /etc/tor
+        shell: cd /etc/tor && hg init
+
+      - name: Stop tor for maintenance
+        service: name=tor state=stopped
+
+      - name: Add torservers torrc
+        template: src=config/torrc dest=/etc/tor/torrc 
+
+      - name: Add and commit torservers file to config repo
+        shell: cd /etc/tor/ && hg add . && hg ci -m"Initial config."
+
+      - name: Restart Relay
+        service: name=tor state=started
