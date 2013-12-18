@@ -18,15 +18,15 @@
       - name: Install Tor geoip database
         apt: update_cache=yes install_recommends=no pkg={{item}}
         with_items:
-            - mercurial
+#            - mercurial
             - tor
             - tor-geoipdb
 
-      - name: Set username in hg config
-        shell: echo "[ui]\nusername = Torservers Admin <admin@lists.torservers.net>" > ~/.hgrc
+#      - name: Set username in hg config
+#        shell: echo "[ui]\nusername = Torservers Admin <admin@lists.torservers.net>" > ~/.hgrc
 
-      - name: Initialize git in /etc/tor
-        shell: cd /etc/tor && hg init
+#      - name: Initialize git in /etc/tor
+#        shell: cd /etc/tor && hg init
 
       - name: Stop tor for maintenance
         service: name=tor state=stopped
@@ -34,8 +34,124 @@
       - name: Add torservers torrc
         template: src=config/torrc dest=/etc/tor/torrc 
 
-      - name: Add and commit torservers file to config repo
-        shell: cd /etc/tor/ && hg add . && hg ci -m"Initial config."
+#      - name: Add and commit torservers file to config repo
+#        shell: cd /etc/tor/ && hg add . && hg ci -m"Initial config."
 
       - name: Restart Relay
         service: name=tor state=started
+        
+      #
+      # Install Lighttpd
+      #
+
+      - name: Install lighttpd and PHP5
+        apt: pkg={{item}} state=installed
+        with_items:
+          - lighttpd
+          - php5-cgi
+
+      - name: deploy torservers lighttpd config
+        copy: src=config/lighttpd.conf dest=/etc/lighttpd/lighttpd.conf backup=yes
+        
+      - name: Create conf.d directory for lighttpd
+        file: path=/etc/lighttpd/conf.d state=directory
+
+      - name: Deploy torservers index.php
+        copy: src=config/web_index.php dest=/var/www/index.php
+
+      - name: Delete distribution index files
+        file: path={{item}} state=absent
+        with_items:
+          - /var/www/index.html
+          - /var/www/index.lighttpd.html
+
+      - name: get most recent frontpage for web server
+        get_url: url=http://www.torservers.net/anonymizer.html dest=/var/www/cache
+
+      - name: Set file permission for cached index file
+        file: path=/var/www/cache owner=www-data group=www-data
+
+      - name: Deploy torservers reverse proxy config
+        copy: src=config/10-proxy.conf dest=/etc/lighttpd/conf-enabled/10-proxy.conf backup=yes
+
+      - name: Enable required lighttpd modules
+        file: src=/etc/lighttpd/conf-available/{{item}} dest="/etc/lighttpd/conf-enabled/{{item}}" state=link
+        with_items:
+          - 10-fastcgi.conf
+          - 15-fastcgi-php.conf
+
+      - name: restart lighttpd
+        service: name=lighttpd state=restarted
+
+      #
+      # Install vnstati
+      #
+      
+      - name: Install vnstati
+        apt: pkg=vnstati state=installed
+        
+      - name: Create file for vnstat graph
+        file: path=/var/www/vnstat.png state=touch owner=www-data group=www-data
+        
+      - name: Create file for vnstat daily graph
+        file: path=/var/www/vnstat_d.png state=touch owner=www-data group=www-data
+        
+      - name: Create file for vnstat monthly graph
+        file: path=/var/www/vnstat_m.png state=touch owner=www-data group=www-data
+
+      - name: Create file for vnstat XML Data
+        file: path=/var/www/vnstat.xml state=touch owner=www-data group=www-data
+     
+      - name: Create cronjobs for vnstat (1/4)
+        cron: minute="*/10" job="/usr/bin/vnstati -vs -o /var/www/vnstat.png -i eth0 >/dev/null 2>&1" name=vnstat_overall state=present user=www-data
+        
+      - name: Create cronjobs for vnstat (2/4)
+        cron: minute="*/10" job="/usr/bin/vnstati -d -o /var/www/vnstat_d.png -i eth0 >/dev/null 2>&1" name=vnstat_daily state=present user=www-data
+
+      - name: Create cronjobs for vnstat (3/4)
+        cron: minute=1 hour=3 job="/usr/bin/vnstati -m -o /var/www/vnstat_m.png -i eth0 >/dev/null 2>&1" name=vnstat_monthly state=present user=www-data
+
+#      - name: Create cronjobs for vnstat (4/4)
+#        cron: minute=1 hour=3 job="/usr/bin/vnstati --xml > /var/www/vnstat.xml 2>/dev/null" name=vnstat_xml state=present user=www-data
+        
+      - name: Initially create vnstat graphs and XML
+        shell: "{{item}}"
+        with_items:
+#          - /usr/bin/vnstati --xml > /var/www/vnstat.xml
+          - /usr/bin/vnstati -m -o /var/www/vnstat_m.png -i eth0 >/dev/null 2>&1
+          - /usr/bin/vnstati -d -o /var/www/vnstat_d.png -i eth0 >/dev/null 2>&1
+          - /usr/bin/vnstati -vs -o /var/www/vnstat.png -i eth0 >/dev/null 2>&1
+
+      #
+      # Install unbound
+      #
+
+      - name: Install unbound DNS Server
+        apt: pkg=unbound state=installed
+        
+      - name: Activate unbound DNS Server
+        shell: echo "nameserver 127.0.0.1" > /etc/resolv.conf
+        
+
+      #
+      # Install Munin Node
+      #
+      
+      - name: Install munin node
+        apt: pkg=munin-node state=present
+
+      - name: Enable netstat plugin for munin
+        file: src=/usr/share/munin/plugins/netstat dest=/etc/munin/plugins/netstat state=link
+        
+      - name: Remove all other Plugins
+        file: path={{item}} state=absent
+        with_nested:
+          - "/etc/munin/plugins/http_loadtime"
+          - with_fileglob:
+            - "/etc/munin/plugins/ntp_*"
+
+      - name: Allow torserver.net's munin collector
+        shell: sed "s/allow \\^127\\\.0\\\.0\\\.1\\$/allow ^194\\\.150\\\.168\\\.61$/" -i /etc/munin/munin-node.conf
+
+      - name: restart munin node
+        service: name=munin-node state=restarted
