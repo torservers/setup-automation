@@ -33,7 +33,6 @@
         action: copy src=config/sshd_config dest=/etc/ssh/sshd_config backup=yes
         notify: restart ssh
 
-
       - name: Copy the iptables config to host
         action: copy src=config/iptables_rules dest=/etc/iptables.rules
             mode=600

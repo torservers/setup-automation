@@ -1,0 +1,32 @@
+- hosts: all
+  port: 22023
+  remote_user: johannes
+  sudo: yes
+  
+  tasks:
+    - name: switch to torserver.net's recommended sysctl.conf
+      copy: src=config/sysctl.conf dest=/etc/sysctl.conf
+
+    - name: enable new sysctl settings
+      shell: sysctl --system
+
+#    - name: Set vnstati's max bandwidth line to 1Gbps
+#      shell: sed "s/MaxBandwidth 100/MaxBandwidth 1000/g" -i /etc/vnstat.conf
+#
+#    - name: restart vnstat
+#      service: name=vnstat state=restarted
+#      
+#    - name: disable tor
+#      service: name=tor state=stopped
+#
+#    - name: transfer torservers initfile for more than one tor process
+#      copy: src=config/initd-tor-multiproc dest=/etc/init.d/tor backup=yes
+#
+#    - name: transfer torservers torrc(s) for multiple processes
+#      template: src=config/torrc-multiproc dest=/etc/tor/tor{{item}}.cfg
+#      with_items:
+#        - 0
+#        - 1
+#
+#    - name: start tor again
+#      service: name=tor state=restarted

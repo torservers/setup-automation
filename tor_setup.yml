@@ -143,13 +143,21 @@
       - name: Enable netstat plugin for munin
         file: src=/usr/share/munin/plugins/netstat dest=/etc/munin/plugins/netstat state=link
         
-      - name: Remove all other Plugins
+      - name: Remove http_loadtime plugin from munin
+        file: path=/etc/munin/plugins/http_loadtime state=absent
+ 
+      - name: Remove ntp plugins from munin
         file: path={{item}} state=absent
-        with_nested:
-          - "/etc/munin/plugins/http_loadtime"
-          - with_fileglob:
-            - "/etc/munin/plugins/ntp_*"
-
+        with_fileglob: /etc/munin/plugins/ntp_* 
+          
+      - name: Remove postfix plugins from munin
+        file: path={{item}} state=absent
+        with_fileglob: /etc/munin/plugins/postfix_* 
+ 
+      - name: Remove exim plugins from munin
+        file: path={{item}} state=absent
+        with_fileglob: /etc/munin/plugins/exim_* 
+ 
       - name: Allow torserver.net's munin collector
         shell: sed "s/allow \\^127\\\.0\\\.0\\\.1\\$/allow ^194\\\.150\\\.168\\\.61$/" -i /etc/munin/munin-node.conf
 
