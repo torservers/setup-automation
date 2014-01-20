@@ -1,4 +1,4 @@
-- hosts: all
+- hosts: testserver
   port: 22
   remote_user: root
   tasks:
@@ -69,7 +69,6 @@
             - denyhosts
             - ntp
             - apticron
-            - vnstat
             - logcheck
             - logcheck-database
       
@@ -78,9 +77,6 @@
 
       - name: Make apticron send diffs only
         shell: sed -i -e 's/^# DIFF_ONLY/DIFF_ONLY/' /etc/apticron/apticron.conf
-
-      - name: Setup vnstat
-        shell: vnstat -u -i eth0
 
       - name: Remove search line from resolv.conf
         shell: sed -e 's/^search.*$//' /etc/resolv.conf
