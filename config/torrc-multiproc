@@ -40,7 +40,20 @@ SocksPolicy reject *
 
 RunAsDaemon 1
 RefuseUnknownExits 1
-MaxOnionsPending 250
+
+#Enable tor control port
+ControlPort 905{{ item }}
+ControlListenAddress 127.0.0.1
+CookieAuthentication 1
+CookieAuthFile /var/run/torctl/cookies/{{ item }}.cookie
+CookieAuthFileGroupReadable 1
+ControlPortWriteToFile /var/run/torctl/statements/{{ item }}.stmt
+ControlPortFileGroupReadable 1
+
+
+
+# Tor says this is obsolete
+#MaxOnionsPending 250
 
 # https://trac.torproject.org/projects/tor/wiki/TheOnionRouter/ReducedExitPolicy
 # 06.08.2012

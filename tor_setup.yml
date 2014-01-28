@@ -3,13 +3,16 @@
   remote_user: johannes
   sudo: yes
   tasks:
-      - name: Add pycurl package
-        apt: pkg=python-pycurl state=present
+      - name: Add pycurl and jinja2 packages
+        apt: pkg={{ item }} state=present
+        with_items:
+            - python-pycurl
+            - python-jinja2
  
       - name: Add Tor repository
         apt_repository: repo="deb http://deb.torproject.org/torproject.org wheezy main" state=present
 
-      - name: Add Tor Keyservers
+      - name: Add torproject GPG key
         shell: apt-key adv --recv-keys --keyserver keys.gnupg.net 886DDD89
 
       - name: Install Torproject Keyring
@@ -26,26 +29,53 @@
 
       - name: Stop tor for maintenance
         service: name=tor state=stopped
+       
+      # -- snap for later on deployment of torrc-generator
+      - name: Create torservers scripts and templates folders
+        file: path={{ item }} owner=debian-tor group=debian-tor mode=740 state=directory
+        with_items:
+          - /opt/torservers/scripts
+          - /opt/torservers/templates
+        
+      - name: Create directories for tor's controlport statements and auth cookies
+        file: path={{ item }} owner=debian-tor group=debian-tor mode=740 state=directory
+        with_items:
+           - /var/run/torctl/statements
+           - /var/run/torctl/cookies
 
-      - name: Add torservers torrc
-        template: src=config/torrc dest=/etc/tor/torrc 
+      - name: Copy over torrc generator
+        copy: src=tools/generate_tor_configurations.py dest=/opt/torservers/scripts/generate_tor_configurations.py
+        
+      - name: install pip
+        apt: pkg=python-pip state=present
 
-      - name: Restart Relay
-        service: name=tor state=started
+      - name: install stem for python
+        pip: name=stem
+
+
+      - name: Copy over fingerprint tool
+        copy: src=tools/get_fingerprints.py dest=/opt/torservers/scripts/get_fingerprints.py
+
+      - name: Copy over torrc template
+        copy: src=config/torrc-multiproc dest=/opt/torservers/templates/tor_multiproc.tpl.cfg
+         
+      - name: Execute torrc generator with host params
+        shell: "python /opt/torservers/scripts/generate_tor_configurations.py -a {{ relayips }} -n {{ relaynicks }} -c /opt/torservers/templates/tor_multiproc.tpl.cfg"
+
+      - name: Copy multiproc-enabled torrc
+        copy: src=config/initd-tor-multiproc dest=/etc/init.d/tor backup=yes
+        
+      - name: Make /etc/tor/ group-readable
+        file: path=/etc/tor owner=debian-tor group=debian-tor mode=660 recurse=yes
 
       - name: Install unbound DNS Server
         apt: pkg=unbound state=installed
-        
-      # -- snap for later on deployment of torrc-generator
-        
-      - name: Create directories for tor's controlport statements and auth cookies
-        file: path={{ item }} owner=debian-tor group=debian-tor mode=640 state=directory
-        with_items:
-          - /var/run/torctl/statements
-          - /var/run/torctl/cookies
 
       - name: Activate unbound DNS Server
         shell: echo "nameserver 127.0.0.1" > /etc/resolv.conf
+
+      - name: Start tor services
+        service: name=tor state=started
 
       #
       # Install Munin Node
