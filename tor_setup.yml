@@ -68,6 +68,9 @@
       - name: Make /etc/tor/ group-readable
         file: path=/etc/tor owner=debian-tor group=debian-tor mode=660 recurse=yes
 
+      - name: Copy over torservers disclaimer site
+        copy: src=config/exit_info.htm dest=/opt/torservers/exit_info.htm
+
       - name: Install unbound DNS Server
         apt: pkg=unbound state=installed
 

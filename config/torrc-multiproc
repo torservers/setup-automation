@@ -12,7 +12,7 @@ OutboundBindAddress {{ ip_address }}
 
 ORListenAddress {{ ip_address }}:443
 
-DirListenAddress 127.0.0.1:9030
+DirListenAddress {{ ip_address }}:80
 
 DataDirectory /var/lib/tor{{item}}
 
@@ -50,7 +50,8 @@ CookieAuthFileGroupReadable 1
 ControlPortWriteToFile /var/run/torctl/statements/{{ item }}.stmt
 ControlPortFileGroupReadable 1
 
-
+#Set info page
+DirPortFrontPage /opt/torservers/exit_info.htm
 
 # Tor says this is obsolete
 #MaxOnionsPending 250
