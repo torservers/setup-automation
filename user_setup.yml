@@ -1,4 +1,4 @@
-- hosts: testserver
+- hosts: all
   port: 22
   remote_user: root
   tasks:
