@@ -24,21 +24,26 @@
             - tor
             - tor-geoipdb
 
+      - name: Add users to debian-tor group
+        user: name=johannes groups=debian-tor append=yes
             
       # -- snip -- for later on tor deployment of torrc-generator
 
       - name: Stop tor for maintenance
         service: name=tor state=stopped
+        
+      - name: for good measures, kill all tor processes
+        shell: "killall tor || :"
        
       # -- snap for later on deployment of torrc-generator
       - name: Create torservers scripts and templates folders
-        file: path={{ item }} owner=debian-tor group=debian-tor mode=740 state=directory
+        file: path={{ item }} owner=debian-tor group=debian-tor mode=750 state=directory
         with_items:
           - /opt/torservers/scripts
           - /opt/torservers/templates
         
       - name: Create directories for tor's controlport statements and auth cookies
-        file: path={{ item }} owner=debian-tor group=debian-tor mode=740 state=directory
+        file: path={{ item }} owner=debian-tor group=debian-tor mode=750 state=directory
         with_items:
            - /var/run/torctl/statements
            - /var/run/torctl/cookies
@@ -46,12 +51,14 @@
       - name: Copy over torrc generator
         copy: src=tools/generate_tor_configurations.py dest=/opt/torservers/scripts/generate_tor_configurations.py
         
+      - name: Copy over myfamily tool
+        copy: src=tools/set_myfamily.py dest=/opt/torservers/scripts/set_myfamily.py
+
       - name: install pip
         apt: pkg=python-pip state=present
 
       - name: install stem for python
         pip: name=stem
-
 
       - name: Copy over fingerprint tool
         copy: src=tools/get_fingerprints.py dest=/opt/torservers/scripts/get_fingerprints.py
@@ -66,7 +73,7 @@
         copy: src=config/initd-tor-multiproc dest=/etc/init.d/tor backup=yes
         
       - name: Make /etc/tor/ group-readable
-        file: path=/etc/tor owner=debian-tor group=debian-tor mode=660 recurse=yes
+        file: path=/etc/tor owner=debian-tor group=debian-tor mode=770 recurse=yes
 
       - name: Copy over torservers disclaimer site
         copy: src=config/exit_info.htm dest=/opt/torservers/exit_info.htm
